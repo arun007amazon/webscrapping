@@ -1,72 +1,89 @@
 package main
 
 import (
-	//"encoding/csv"
-	"fmt"
-	//"log"
-	//"os"
+	"encoding/csv"
+    "log"
+    "os"
+    "fmt"
 
 	"github.com/gocolly/colly"
 )
 
 func main() {
-	fetchURL := ""
-/* 	fileName := "disney-movies.csv"
-	file, err := os.Create(fileName)
-	if err != nil {
-		log.Fatal("ERROR: Could not create file %q: %s\n", fileName, err)
-		return
-	}
-	defer file.Close()
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Write column headers of the text file
-	writer.Write([]string{"Sl. No.", "Movie Name", "Release Year", "Certificate", "Genre",
-		"Running time", "Rating", "Number of Votes", "Gross"})
-*/
-	// Instantiate the default Collector
-	c := colly.NewCollector()
-
-	// Before making a request, print "Visiting ..."
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting: ", r.URL)
-	})
-
-	// Callback when colly finds the entry point to the DOM segment having a movie info
-/*	c.OnHTML(`.lister-item-content`, func(e *colly.HTMLElement) {
-		//Locate and extract different pieces information about each movie
-		number := e.ChildText(".lister-item-index")
-		name := e.ChildText(".lister-item-index ~ a")
-		year := e.ChildText(".lister-item-year")
-		runtime := e.ChildText(".runtime")
-		certificate := e.ChildText(".certificate")
-		genre := e.ChildText(".genre")
-		rating := e.ChildText("[class='ipl-rating-star small'] .ipl-rating-star__rating")
-		vote := e.ChildAttr("span[name=nv]", "data-value")
-		gross := e.ChildText(".text-muted:contains('Gross') ~ span[name=nv]")
-
-		// Write all scraped pieces of information to output text file
-		writer.Write([]string{
-			number,
-			name,
-			year,
-			certificate,
-			runtime,
-			genre,
-			rating,
-			vote,
-			gross,
-		})
-	})
-*/
-
-	c.OnHTML(`.nsedata_bx`, func(e *colly.HTMLElement) {
-                //Locate and extract different pieces information about each movie
-                number := e.ChildText(".span_price_wrap")
-		fmt.Println(number)
-        })
-	// start scraping the page under the given URL
-	c.Visit(fetchURL)
-	fmt.Println("End of scraping: ", fetchURL)
+    rows := readSample()
+    rows = appendSum(rows)
+    fmt.Println(rows)
+    writeChanges(rows)
 }
+
+func readSample() [][]string {
+    f, err := os.Open("data.csv")
+    if err != nil {
+        log.Fatal(err)
+    }
+    rows, err := csv.NewReader(f).ReadAll()
+    f.Close()
+    if err != nil {
+        log.Fatal(err)
+    }
+    return rows
+}
+
+func appendSum(rows [][]string) [][]string {
+
+    row := getDatafromUrl(rows[1])
+    rows = append(rows, row)
+    fmt.Println(rows)
+    return rows
+}
+
+
+func getDatafromUrl(urls []string)[]string{
+	stockdetails := []string{}
+	fmt.Println(urls)
+        for _, s := range urls{
+		price := "";
+		if(s == "time"){
+		   stockdetails = append(stockdetails, "time")
+		}else{
+		   price = getprice(s)
+		   stockdetails = append(stockdetails, price)
+		}
+        }
+	return stockdetails
+}
+
+func getprice(url string) string{
+
+        // Instantiate the default Collector
+        c := colly.NewCollector()
+
+        // Before making a request, print "Visiting ..."
+        c.OnRequest(func(r *colly.Request) {
+                fmt.Println("Visiting: ", r.URL)
+        })
+
+	number := ""
+        c.OnHTML(`.nsedata_bx`, func(e *colly.HTMLElement) {
+                //Locate and extract different pieces information about each movie
+                number = e.ChildText(".span_price_wrap")
+                fmt.Println(number)
+        })
+        // start scraping the page under the given URL
+        c.Visit(url)
+        fmt.Println("End of scraping: ", url)
+ 	return number
+}
+
+func writeChanges(rows [][]string) {
+    f, err := os.Create("data.csv")
+    if err != nil {
+        log.Fatal(err)
+    }
+    err = csv.NewWriter(f).WriteAll(rows)
+    f.Close()
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
