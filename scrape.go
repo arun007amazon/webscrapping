@@ -1,13 +1,22 @@
 package main
 
 import (
-	"encoding/csv"
+    "encoding/csv"
     "log"
     "os"
     "fmt"
-
-	"github.com/gocolly/colly"
+    "github.com/gocolly/colly"
+    "bytes"
+    "encoding/json"
+    "errors"
+    "net/http"
+    "time"
 )
+
+type SlackRequestBody struct {
+    Text string `json:"text"`
+}
+
 
 func main() {
     rows := readSample()
@@ -33,6 +42,7 @@ func appendSum(rows [][]string) [][]string {
 
     row := getDatafromUrl(rows[1])
     rows = append(rows, row)
+    sendDataToSlack(rows[0], row)
     fmt.Println(rows)
     return rows
 }
@@ -87,3 +97,39 @@ func writeChanges(rows [][]string) {
     }
 }
 
+func sendDataToSlack(companys []string, todaysPrice []string){
+    data :=""
+    webhookUrl := "https://hooks.slack.com/services/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"
+    for i := 0; i < len(companys); i++ {
+	data = data + "*" + companys[i] + "*: " +todaysPrice[i] +"\n"
+    }
+    fmt.Println("data :", data)
+    err := SendSlackNotification(webhookUrl, data)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func SendSlackNotification(webhookUrl string, msg string) error {
+
+    slackBody, _ := json.Marshal(SlackRequestBody{Text: msg})
+    req, err := http.NewRequest(http.MethodPost, webhookUrl, bytes.NewBuffer(slackBody))
+    if err != nil {
+        return err
+    }
+
+    req.Header.Add("Content-Type", "application/json")
+
+    client := &http.Client{Timeout: 10 * time.Second}
+    resp, err := client.Do(req)
+    if err != nil {
+        return err
+    }
+
+    buf := new(bytes.Buffer)
+    buf.ReadFrom(resp.Body)
+    if buf.String() != "ok" {
+        return errors.New("Non-ok response returned from Slack")
+    }
+    return nil
+}
