@@ -17,6 +17,10 @@ type SlackRequestBody struct {
     Text string `json:"text"`
 }
 
+type Configuration struct {
+    Webhook   string
+}
+
 
 func main() {
     rows := readSample()
@@ -98,13 +102,26 @@ func writeChanges(rows [][]string) {
 }
 
 func sendDataToSlack(companys []string, todaysPrice []string){
+
+    //get config file information
+    file, _ := os.Open("slackconfig.json")
+    defer file.Close()
+    decoder := json.NewDecoder(file)
+    configuration := Configuration{}
+    err := decoder.Decode(&configuration)
+    if err != nil {
+      fmt.Println("error:", err)
+    }
+    fmt.Println(configuration.Webhook)
+
+
     data :=""
-    webhookUrl := "https://hooks.slack.com/services/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"
+    webhookUrl := configuration.Webhook
     for i := 0; i < len(companys); i++ {
 	data = data + "*" + companys[i] + "*: " +todaysPrice[i] +"\n"
     }
     fmt.Println("data :", data)
-    err := SendSlackNotification(webhookUrl, data)
+    err = SendSlackNotification(webhookUrl, data)
     if err != nil {
         log.Fatal(err)
     }
