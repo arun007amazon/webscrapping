@@ -11,6 +11,7 @@ import (
     "errors"
     "net/http"
     "time"
+    "strconv"
 )
 
 type SlackRequestBody struct {
@@ -55,10 +56,12 @@ func appendSum(rows [][]string) [][]string {
 func getDatafromUrl(urls []string)[]string{
 	stockdetails := []string{}
 	fmt.Println(urls)
+	i := time.Now().Unix()
+	unixTime := strconv.FormatInt(i, 10)
         for _, s := range urls{
 		price := "";
 		if(s == "time"){
-		   stockdetails = append(stockdetails, "time")
+		   stockdetails = append(stockdetails, unixTime)
 		}else{
 		   price = getprice(s)
 		   stockdetails = append(stockdetails, price)
@@ -117,7 +120,13 @@ func sendDataToSlack(companys []string, todaysPrice []string){
 
     data :=""
     webhookUrl := configuration.Webhook
-    for i := 0; i < len(companys); i++ {
+
+    //Get local time and append it to slack timestamp
+    loc, _ := time.LoadLocation("Asia/Kolkata")
+    t :=time.Now().In(loc)
+    data = data + "*" + companys[0] + "*: " +t.String() +"\n"
+
+    for i := 1; i < len(companys); i++ {
 	data = data + "*" + companys[i] + "*: " +todaysPrice[i] +"\n"
     }
     fmt.Println("data :", data)
